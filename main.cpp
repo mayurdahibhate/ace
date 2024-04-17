@@ -7,7 +7,6 @@
 #include "include/vmath.h"
 using namespace vmath;
 
-#include "include/OGL.h"
 #include "include/window_manager.h"
 #include "include/LoadShaders.h"
 // #include "include/printGLinfo.h"
