@@ -1,18 +1,43 @@
 #include "../include/window_manager.h"
 
-HWND _ghwnd = NULL;
-DWORD _dwStyle = 0;
-WINDOWPLACEMENT _wpPrev = { sizeof(WINDOWPLACEMENT) };
+#ifdef WIN32
+	HWND _ghwnd = NULL;
+	DWORD _dwStyle = 0;
+	WINDOWPLACEMENT _wpPrev = { sizeof(WINDOWPLACEMENT) };
 
-BOOL _gbFullscreen = FALSE;
-BOOL _gbActive = FALSE;
+	BOOL _gbFullscreen = FALSE;
+	BOOL _gbActive = FALSE;
 
-int _gWidth = 800;
-int _gHeight = 600;
+	int _gWidth = 800;
+	int _gHeight = 600;
 
-// OpenGL related global variables
-HDC ghdc = NULL;
-HGLRC ghrc = NULL;
+	// OpenGL related global variables
+	HDC ghdc = NULL;
+	HGLRC ghrc = NULL;
+#else
+	Display *display = NULL;
+	Colormap colormap;
+	Window window;
+	XVisualInfo *visualInfo;
+
+    XEvent event;
+    KeySym keySym;
+    char keys[26];
+
+	Bool _gbFullscreen = False;
+	Bool _gbActive = False;
+
+	Bool bDone = False;
+
+	int _gWidth = 800;
+	int _gHeight = 600;
+
+	// OpenGL global variable
+	glXCreateContextAttribsARBproc glXCreateContextAttribsARB = NULL;
+	GLXFBConfig glxFBConfig;
+	GLXContext glxContext = NULL;
+#endif
+
 
 // global callback declarations
 InitializeCallback   _initializeCallback  = NULL;
@@ -24,6 +49,7 @@ UpdateCallback       _updateCallback      = NULL;
 ReshapeCallback      _reshapeCallback     = NULL;   
 UninitializeCallback _uninitializeCallback = NULL;
 
+#ifdef WIN32
 LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 {
 	// code
@@ -351,22 +377,443 @@ void acewmCreateWindow(const char *title, int x, int y, int width, int height)
 	SetFocus(hwnd);
 }
 
-void acewmDestroyWindow(void)
+void acewmSwapBuffers(void)
 {
-    // 
+	SwapBuffers(ghdc);
 }
 
-void acewmFullScreen()
+#else
+
+int initialize()
 {
-    if (!_gbFullscreen)
-        ToggleFullscreen();
+	// local variable declarations
+    int attribs_new[] = {
+        GLX_CONTEXT_MAJOR_VERSION_ARB, 4,
+        GLX_CONTEXT_MINOR_VERSION_ARB, 6,
+        GLX_CONTEXT_PROFILE_MASK_ARB, GLX_CONTEXT_CORE_PROFILE_BIT_ARB,
+        None
+    };
+
+    int attribs_old[] = {
+        GLX_CONTEXT_MAJOR_VERSION_ARB, 1,
+        GLX_CONTEXT_MINOR_VERSION_ARB, 0,
+        None
+    };
+
+    // code
+    // get the address of function in function pointer
+    glXCreateContextAttribsARB = (glXCreateContextAttribsARBproc)glXGetProcAddress((GLubyte*)"glXCreateContextAttribsARB");
+
+    if (glXCreateContextAttribsARB == NULL)
+    {
+        // fprintf(file, "Can not get required function address : glXCreateContextAttribsARB");
+        // uninitialize();
+        return -3;
+    }
+
+    // create OpenGL context programmable pipeline compatible
+    glxContext = glXCreateContextAttribsARB(display, glxFBConfig, 0, True, attribs_new);
+
+    if (!glxContext)
+    {
+        // fprintf(file, "Core profile based glXContext not found.\nSo falling back to old context.\n");
+        // glxContext = glXCreateContextAttribsARB(display, visualInfo, 0, True, attribs_old);
+
+        if (!glxContext)
+        {
+            // fprintf(file, "Old GLXContext cannot be found!\n");
+            uninitialize();
+        }
+        else
+        {
+            // fprintf(file, "Old glxContext found.\n");
+        }
+
+        if (!glXIsDirect(display, glxContext))
+        {
+            // fprintf(file, "Not supporting hardware rendering.\n");
+        }
+        else
+        {
+            // fprintf(file, "Supporting hardware rendering.\n");
+        }
+    }
+    else
+    {
+        // fprintf(file, "Core glxContext found successfully.\n");
+    }
+
+    // make this context as current context
+    if (glXMakeCurrent(display, window, glxContext) == False)
+    {
+        // fprintf(file, "glXMakeCurrent() failed!\n");
+        return -2;
+    }
+
+    if(_initializeCallback)
+    {
+        _initializeCallback();
+    }
+
+	// warm up resize
+    if(_reshapeCallback) 
+    {
+        _reshapeCallback(_gWidth, _gHeight);
+	}
+
+	return 0;     
 }
 
-void acewmExitFullScreen()
+void acewmCreateWindow(const char *title, int x, int y, int width, int height)
 {
-    if (_gbFullscreen)
-        ToggleFullscreen();
+
+   	// local variable declarations
+    int defaultScreen;
+    XSetWindowAttributes windowAtrributes;
+    int styleMask;
+    Atom windowMangerDelete;
+
+    int screenWidth, screenHeight;
+    static int winWidth, winHeight;
+    char keys[26];
+
+    int frameBufferAtrributes[] = {
+        GLX_DOUBLEBUFFER, True,
+        GLX_X_RENDERABLE, True,
+        GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
+        GLX_RENDER_TYPE, GLX_RGBA_BIT,
+        GLX_X_VISUAL_TYPE, GLX_TRUE_COLOR,
+        GLX_RED_SIZE, 8,
+        GLX_GREEN_SIZE, 8,
+        GLX_BLUE_SIZE, 8,
+        GLX_ALPHA_SIZE, 8,
+        GLX_STENCIL_SIZE, 8,
+        GLX_DEPTH_SIZE, 24,
+        None
+    };
+    
+    Bool bDone = False;
+    int result = 0;
+
+    // programmable pipeline related variables
+    GLXFBConfig bestGLXconfig;
+    GLXFBConfig *glxFBConfigs = NULL;
+    XVisualInfo *tempXVisualInfo = NULL;
+    int numFBConfigs = 0;
+
+    int bestFrameBufferConfig = -1;
+    int bestNumOfSamples = -1;
+    int worstFrameBufferConfig = -1;
+    int worstNumOfSamples = 999;
+    
+    int sampleBuffers = 0;
+    int samples = 0;
+    int i = 0;
+
+    // code
+    // open a connection with X server and get display interface
+    display = XOpenDisplay(NULL);
+
+    if (display == NULL)
+    {
+        exit(1);
+    }
+
+    // get default screen from above display
+    defaultScreen = XDefaultScreen(display);
+
+    // get available FBconfigs
+    glxFBConfigs = glXChooseFBConfig(display, defaultScreen, frameBufferAtrributes, &numFBConfigs);
+
+    if (glxFBConfigs == NULL)
+    {
+        exit(-1);
+    }
+
+    // find best matching FBConfig from array obtained from above
+    for (i = 0; i < numFBConfigs; i++)
+    {
+        tempXVisualInfo = glXGetVisualFromFBConfig(display, glxFBConfigs[i]);
+
+        if (tempXVisualInfo != NULL)
+        {
+            // get sample buffers
+            glXGetFBConfigAttrib(display, glxFBConfigs[i], GLX_SAMPLE_BUFFERS, &sampleBuffers);
+
+            glXGetFBConfigAttrib(display, glxFBConfigs[i], GLX_SAMPLES, &samples);
+
+            if (bestFrameBufferConfig < 0 || sampleBuffers && samples > bestNumOfSamples)
+            {
+                bestFrameBufferConfig = i;
+                bestNumOfSamples = samples;
+            }
+
+            if (worstFrameBufferConfig < 0 || !sampleBuffers || samples < worstNumOfSamples)
+            {
+                worstFrameBufferConfig = i;
+                worstNumOfSamples = samples;
+            }
+
+            XFree(tempXVisualInfo);
+            tempXVisualInfo = NULL;
+        }
+    }
+
+    // accordingly get best GLXFBconfig
+    bestGLXconfig = glxFBConfigs[bestFrameBufferConfig];
+
+    // assign to global glxConfig
+    glxFBConfig = bestGLXconfig;
+    
+    XFree(glxFBConfigs);
+
+    // now get best visual bestFBConfig
+    visualInfo = glXGetVisualFromFBConfig(display, glxFBConfig);
+
+    // set window attriubtes / properties
+    memset((void*)&windowAtrributes, 0, sizeof(XWindowAttributes));
+    windowAtrributes.border_pixel = 0;
+    windowAtrributes.background_pixel = XBlackPixel(display, visualInfo->screen);
+    windowAtrributes.background_pixmap = 0;
+    windowAtrributes.colormap = XCreateColormap(display,
+                                    XRootWindow(display, visualInfo->screen),
+                                    visualInfo->visual,
+                                    AllocNone
+                                );
+
+    // assign this colormap to global colormap
+    colormap = windowAtrributes.colormap;
+
+    // set the style of the window CW = create window
+    styleMask = CWBorderPixel | CWBackPixel | CWColormap | CWEventMask;
+
+    // now finally create a window
+    window = XCreateWindow(display,
+                            XRootWindow(display, visualInfo->screen),
+                            0,
+                            0,
+                            _gWidth,
+                            _gHeight,
+                            0,
+                            visualInfo->depth,
+                            InputOutput,
+                            visualInfo->visual,
+                            styleMask,
+                            &windowAtrributes
+                        );
+
+    if (!window)
+    {
+        exit(1);        
+    }
+
+    // specify to which events this window should respond
+    XSelectInput(display, window,
+                ExposureMask | VisibilityChangeMask | StructureNotifyMask | KeyPressMask | ButtonPressMask | PointerMotionMask | FocusChangeMask
+            );
+
+    // specify window manager delete atom
+    windowMangerDelete = XInternAtom(display, "WM_DELETE_WINDOW", True);
+
+    // add/set above atom as a protocol for window manager
+    XSetWMProtocols(display, window, &windowMangerDelete, 1);
+
+    // give caption to window
+    XStoreName(display, window, title);
+
+    // show / map the window
+    XMapWindow(display, window);
+
+    // center the window
+    screenWidth = XWidthOfScreen(XScreenOfDisplay(display, visualInfo->screen));
+    screenHeight = XHeightOfScreen(XScreenOfDisplay(display, visualInfo->screen));
+
+    XMoveWindow(display, window, (screenWidth - width)/2 , (screenHeight - height)/2);
+
+    // OpenGL initialization
+	result = initialize();
+
+	if (result != 0)
+	{
+        exit(1);
+	}
 }
+
+void uninitialize()
+{
+	// local variable declarations
+    GLXContext currentGLXContext = NULL;
+
+	if (_uninitializeCallback)
+	_uninitializeCallback();
+
+    // uncurrent the context
+    currentGLXContext = glXGetCurrentContext();
+
+    if (currentGLXContext != NULL && currentGLXContext == glxContext)
+    {
+        glXMakeCurrent(display, 0, 0);
+    }
+
+    if (glxContext != NULL)
+    {
+        glXDestroyContext(display, glxContext);
+        glxContext = NULL;
+    }
+
+    if (window)
+    {
+        XDestroyWindow(display, window);
+    }
+
+    if (colormap)
+    {
+        XFreeColormap(display, colormap);
+    }
+
+    if (display)
+    {
+        XCloseDisplay(display);
+        display = NULL;
+    }
+}
+
+void ToggleFullscreen(void)
+{
+    Atom windowManagerStateNormal;
+    Atom windowManagerStateFullscreen;
+    XEvent event;
+
+    // code
+    windowManagerStateNormal = XInternAtom(display, "_NET_WM_STATE", False);
+    windowManagerStateFullscreen = XInternAtom(display, "_NET_WM_STATE_FULLSCREEN", False);
+
+    // memset the event structure and fill it with above two atoms 
+    memset((void*)&event, 0, sizeof(XEvent));
+
+    event.type = ClientMessage;
+    event.xclient.window = window;
+    event.xclient.message_type = windowManagerStateNormal;
+    event.xclient.format = 32;
+    event.xclient.data.l[0] = _gbFullscreen ? 0 : 1;
+    event.xclient.data.l[1] = windowManagerStateFullscreen;
+
+    // send the event
+    XSendEvent(display, XRootWindow(display, visualInfo->screen), False, SubstructureNotifyMask, &event);
+}
+
+void acewmEventLoop()
+{
+	// game loop
+    while (bDone == False)
+    {
+        while (XPending(display))
+        {
+            memset((void*)&event, 0, sizeof(XEvent));
+            XNextEvent(display, &event);
+
+            switch (event.type)
+            {
+            case MapNotify:
+                break;
+
+            case FocusIn:
+                _gbActive = True;
+                break;
+
+            case FocusOut:
+                _gbActive = False;
+                break;
+
+            case ConfigureNotify:
+                _gWidth = event.xconfigure.width;
+                _gHeight = event.xconfigure.height;
+        		_reshapeCallback(_gWidth, _gHeight);
+                break;
+
+            case KeyPress:
+                keySym = XkbKeycodeToKeysym(display, event.xkey.keycode, 0, 0);
+
+                switch (keySym)
+                {
+                case XK_Escape:
+                    bDone = True;
+                    break;
+                
+                default:
+                    break;
+                }
+
+                XLookupString(&event.xkey, keys, sizeof(keys), NULL, NULL);
+
+                switch (keys[0])
+                {
+                case 'F':
+                case 'f':
+                    if (_gbFullscreen == False)
+                    {
+                        ToggleFullscreen();
+                        _gbFullscreen = True;
+                    }
+                    else
+                    {
+                        ToggleFullscreen();
+                        _gbFullscreen = False;
+                    }
+                    break;
+                
+                default:
+                    break;
+                }
+
+                break; // keypress
+            
+            case ButtonPress:
+                switch (event.xbutton.button)
+                {
+                case 1: // LEFT MOUSE BUTTON
+                    break;
+                case 2: // MIDDLE MOUSE BUTTON
+                    break;
+                case 3: // RIGHT MOUSE BUTTON
+                    break;                            
+                default:
+                    break;
+                }
+                break;
+            case 33:
+                bDone = True;
+                break;
+
+            default:
+                break;
+            }
+        }
+
+        // rendering
+        if (_gbActive)
+        {
+            if (_displayCallback)
+			{
+			    _displayCallback();
+			}
+
+            if (_updateCallback)
+			{
+			    _updateCallback();
+			}
+        }
+    }
+
+    uninitialize();
+}
+
+void acewmSwapBuffers(void)
+{
+	glXSwapBuffers(display, window);
+}
+
+#endif
 
 void acewmInitializeCallback(InitializeCallback callback)
 {
@@ -411,7 +858,20 @@ void acewmReshapeCallback(ReshapeCallback callback)
     _reshapeCallback = callback;
 }
 
-void acewmSwapBuffers(void)
+
+void acewmFullScreen()
 {
-    SwapBuffers(ghdc);
+    if (!_gbFullscreen)
+        ToggleFullscreen();
+}
+
+void acewmExitFullScreen()
+{
+    if (_gbFullscreen)
+        ToggleFullscreen();
+}
+
+void acewmDestroyWindow(void)
+{
+    // 
 }

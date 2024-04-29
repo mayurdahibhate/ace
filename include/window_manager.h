@@ -1,9 +1,24 @@
 #ifndef __window_manager_h__
 #define __window_manager_h__
 
-#include <windows.h>
-#include <stdio.h>
-#include <string.h>
+#ifdef WIN32
+    #include <windows.h>
+#else
+    // X11 header files
+    #include <X11/Xlib.h>   // for all Xlib APIs
+    #include <X11/Xutil.h>  // for struct XVisualInfo and related APIs
+    #include <X11/XKBlib.h>
+
+    // OpenGL header files
+    #include <GL/glew.h>  // must be included before <GL/gl.h>
+    #include <GL/gl.h>
+    #include <GL/glx.h>
+
+    #include <memory.h> // for memset()
+#endif // WIN32
+
+#include <stdio.h>  // for printf()
+#include <stdlib.h> // for exit()
 
 #define UNICODE
 #define MYICON 101
@@ -21,8 +36,14 @@ typedef void (*UpdateCallback)          (void);
 typedef void (*ReshapeCallback)         (int width, int height);
 
 // function declarations
+#ifdef WIN32
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
+#else
+typedef GLXContext (*glXCreateContextAttribsARBproc)(Display*, GLXFBConfig, GLXContext, Bool, const int*);
+#endif // WIN32
+
 void ToggleFullscreen(void);
+void uninitialize(void);
 
 void acewmCreateWindow(const char *title, int x, int y, int width, int height);
 void acewmDestroyWindow(void);
