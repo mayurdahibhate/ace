@@ -1,6 +1,6 @@
 #include "../include/window_manager.h"
 
-#ifdef WIN32
+#ifdef _WIN32
 	HWND _ghwnd = NULL;
 	DWORD _dwStyle = 0;
 	WINDOWPLACEMENT _wpPrev = { sizeof(WINDOWPLACEMENT) };

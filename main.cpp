@@ -1,5 +1,3 @@
-// Windows header files
-
 // OpenGL headers
 #include <GL/glew.h> // this must be included before gl/GL.h
 #include <GL/gl.h>
