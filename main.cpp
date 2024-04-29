@@ -28,7 +28,7 @@ GLuint mvpMatrixUniform = 0;
 
 mat4 perspectiveProjectionMatrix;
 
-GLfloat cAngle = 0.0f;
+GLfloat angle_cube = 0.0f;
 
 void init(void);
 void uninit();
@@ -90,76 +90,7 @@ void init(void)
 	// get shader uniform location
 	mvpMatrixUniform = glGetUniformLocation(shaderProgramObject, "uMVPMatrix");
 
-	const GLfloat cubePosition[] = {
-        // top
-		1.0f, 1.0f, -1.0f,
-		-1.0f, 1.0f, -1.0f, 
-		-1.0f, 1.0f, 1.0f,
-		1.0f, 1.0f, 1.0f,  
-
-        // bottom
-        1.0f, -1.0f, -1.0f,
-       -1.0f, -1.0f, -1.0f,
-       -1.0f, -1.0f,  1.0f,
-        1.0f, -1.0f,  1.0f,
-
-        // front
-        1.0f, 1.0f, 1.0f,
-       -1.0f, 1.0f, 1.0f,
-       -1.0f, -1.0f, 1.0f,
-        1.0f, -1.0f, 1.0f,
-
-        // back
-        1.0f, 1.0f, -1.0f,
-       -1.0f, 1.0f, -1.0f,
-       -1.0f, -1.0f, -1.0f,
-        1.0f, -1.0f, -1.0f,
-
-        // right
-        1.0f, 1.0f, -1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, -1.0f, 1.0f,
-        1.0f, -1.0f, -1.0f,
-
-        // left
-		-1.0f, 1.0f, 1.0f,
-		-1.0f, 1.0f, -1.0f, 
-		-1.0f, -1.0f, -1.0f, 
-		-1.0f, -1.0f, 1.0f
-	};
-
-	const GLfloat cubeColor[] = {
-		0.0f, 1.0f, 0.0f,
-        0.0f, 1.0f, 0.0f,
-        0.0f, 1.0f, 0.0f,
-        0.0f, 1.0f, 0.0f,
-
-        1.0f, 0.5f, 0.0f,
-        1.0f, 0.5f, 0.0f,
-        1.0f, 0.5f, 0.0f,
-        1.0f, 0.5f, 0.0f,
-
-        1.0f, 0.0f, 0.0f,
-        1.0f, 0.0f, 0.0f,
-        1.0f, 0.0f, 0.0f,
-        1.0f, 0.0f, 0.0f,
-
-        1.0f, 1.0f, 0.0f,
-        1.0f, 1.0f, 0.0f,
-        1.0f, 1.0f, 0.0f,
-        1.0f, 1.0f, 0.0f,
-
-        0.0f, 0.0f, 1.0f,
-        0.0f, 0.0f, 1.0f,
-        0.0f, 0.0f, 1.0f,
-        0.0f, 0.0f, 1.0f,
-
-        1.0f, 0.0f, 1.0f,
-        1.0f, 0.0f, 1.0f,
-        1.0f, 0.0f, 1.0f,
-        1.0f, 0.0f, 1.0f
-	};
-
+	// interleaved
 	const GLfloat cubeVertices[] = {
         // top
 		1.0f, 1.0f, -1.0f,
@@ -294,13 +225,13 @@ void draw(void)
 	scaleMatrix = vmath::scale(0.75f, 0.75f, 0.75f);
 
 	mat4 rotationMatrix1 = vmath::mat4::identity();
-	rotationMatrix1 = vmath::rotate(cAngle, 1.0f, 0.0f, 0.0f);
+	rotationMatrix1 = vmath::rotate(angle_cube, 1.0f, 0.0f, 0.0f);
 
 	mat4 rotationMatrix2 = vmath::mat4::identity();
-	rotationMatrix2 = vmath::rotate(cAngle, 0.0f, 1.0f, 0.0f);
+	rotationMatrix2 = vmath::rotate(angle_cube, 0.0f, 1.0f, 0.0f);
 
 	mat4 rotationMatrix3 = vmath::mat4::identity();
-	rotationMatrix3 = vmath::rotate(cAngle, 0.0f, 0.0f, 1.0f);
+	rotationMatrix3 = vmath::rotate(angle_cube, 0.0f, 0.0f, 1.0f);
 
 	rotationMatrix = rotationMatrix1 * rotationMatrix2 * rotationMatrix3;
 	
@@ -328,11 +259,11 @@ void draw(void)
 void update(void)
 {
 	// code
-	cAngle = cAngle - 1.0f;
+	angle_cube = angle_cube - 1.0f;
 
-	if (cAngle <= 0.0f)
+	if (angle_cube <= 0.0f)
 	{
-		cAngle = cAngle + 360.0f;
+		angle_cube = angle_cube + 360.0f;
 	}
 }
 
