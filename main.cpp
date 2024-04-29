@@ -38,7 +38,6 @@ void draw(void);
 void update(void);
 void resize(int, int);
 
-
 // entry point function
 int main(int argc, char **argv)
 {
