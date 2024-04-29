@@ -11,17 +11,6 @@ using namespace vmath;
 #include "include/LoadShaders.h"
 // #include "include/printGLinfo.h"
 
-// macros
-#define WIN_WIDTH 800
-#define WIN_HEIGHT 600
-
-// link with OpenGL library
-#pragma comment(lib, "glew32.lib")
-#pragma comment(lib, "OpenGL32.lib")
-
-// global variable declarations
-FILE* gpFile = NULL;
-
 GLuint shaderProgramObject = 0;
 
 enum 
