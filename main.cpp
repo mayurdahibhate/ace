@@ -1,21 +1,14 @@
-// OpenGL headers
-#include <GL/glew.h> // this must be included before gl/GL.h
-#include <GL/gl.h>
-
-#include "include/vmath.h"
-using namespace vmath;
-
-#include "include/window_manager.h"
-#include "include/LoadShaders.h"
-// #include "include/printGLinfo.h"
+#include "ace_engine.h"
 
 GLuint shaderProgramObject = 0;
 
-enum 
+enum
 {
 	AMC_ATTRIBUTE_POSITION,
 	AMC_ATTRIBUTE_COLOR
 };
+
+Mesh cube;
 
 GLuint vao_cube = 0;
 
@@ -54,12 +47,10 @@ int main(int argc, char **argv)
 	acewmUninitiiizeCallback(uninit);
 
 	return 0;
-
 }
 
 void keyboard(unsigned int)
 {
-	
 }
 
 void init(void)
@@ -73,104 +64,66 @@ void init(void)
 		exit(1);
 	}
 
-	// shader program	
-    ShaderInfo shaders[] =
-    {
-        { GL_VERTEX_SHADER, "./shaders/shader.vs" },
-        { GL_FRAGMENT_SHADER, "./shaders/shader.fs" },
-        { GL_NONE, NULL }
-    };
+	// shader program
+	ShaderInfo shaders[] =
+		{
+			{GL_VERTEX_SHADER, "./shaders/basic.vert"},
+			{GL_FRAGMENT_SHADER, "./shaders/basic.frag"},
+			{GL_NONE, NULL}};
 
-    shaderProgramObject = LoadShaders( shaders );
-    glUseProgram( shaderProgramObject );
+	shaderProgramObject = LoadShaders(shaders);
+	glUseProgram(shaderProgramObject);
 
 	// get shader uniform location
 	mvpMatrixUniform = glGetUniformLocation(shaderProgramObject, "uMVPMatrix");
 
-	// interleaved
-	const GLfloat cubeVertices[] = {
-        // top
-		1.0f, 1.0f, -1.0f,
-		0.0f, 1.0f, 0.0f,
-		-1.0f, 1.0f, -1.0f,
-		0.0f, 1.0f, 0.0f, 
-		-1.0f, 1.0f, 1.0f,
-		0.0f, 1.0f, 0.0f,
-		1.0f, 1.0f, 1.0f,  
-		0.0f, 1.0f, 0.0f,
-        
-		// bottom
-        1.0f, -1.0f, -1.0f,
-        1.0f, 0.5f, 0.0f,
-       -1.0f, -1.0f, -1.0f,
-        1.0f, 0.5f, 0.0f,
-       -1.0f, -1.0f,  1.0f,
-        1.0f, 0.5f, 0.0f,
-        1.0f, -1.0f,  1.0f,
-        1.0f, 0.5f, 0.0f,
 
-        // front
-		1.0f, 1.0f, 1.0f,
-		1.0f, 0.0f, 0.0f,
-		-1.0f, 1.0f, 1.0f,
-		1.0f, 0.0f, 0.0f,
-		-1.0f, -1.0f, 1.0f,
-		1.0f, 0.0f, 0.0f,
-		1.0f, -1.0f, 1.0f,
-		1.0f, 0.0f, 0.0f,
 
-        // back
-		1.0f, 1.0f, -1.0f,
-		1.0f, 1.0f, 0.0f,
-		-1.0f, 1.0f, -1.0f,
-		1.0f, 1.0f, 0.0f,
-		-1.0f, -1.0f, -1.0f,
-		1.0f, 1.0f, 0.0f,
-		1.0f, -1.0f, -1.0f,
-		1.0f, 1.0f, 0.0f,
-		
-		// right
-        1.0f, 1.0f, -1.0f,
-		0.0f, 0.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-		0.0f, 0.0f, 1.0f,
-        1.0f, -1.0f, 1.0f,
-		0.0f, 0.0f, 1.0f,
-        1.0f, -1.0f, -1.0f,
-		0.0f, 0.0f, 1.0f,
+	vector<vec3> cubePositions;
 
-        // left
-		-1.0f, 1.0f, 1.0f,
-        1.0f, 0.0f, 1.0f,
-		-1.0f, 1.0f, -1.0f,
-        1.0f, 0.0f, 1.0f,
-		-1.0f, -1.0f, -1.0f,
-        1.0f, 0.0f, 1.0f,
-		-1.0f, -1.0f, 1.0f,
-        1.0f, 0.0f, 1.0f
+	cubePositions = vector<vec3> {
+		{-1.0f,-1.0f,-1.0f},
+		{-1.0f,-1.0f, 1.0f},
+		{-1.0f, 1.0f, 1.0f},
+		{1.0f, 1.0f,-1.0f},
+		{-1.0f,-1.0f,-1.0f},
+		{-1.0f, 1.0f,-1.0f},
+		{1.0f,-1.0f, 1.0f},
+		{-1.0f,-1.0f,-1.0f},
+		{1.0f,-1.0f,-1.0f},
+		{1.0f, 1.0f,-1.0f},
+		{1.0f,-1.0f,-1.0f},
+		{-1.0f,-1.0f,-1.0f},
+		{-1.0f,-1.0f,-1.0f},
+		{-1.0f, 1.0f, 1.0f},
+		{-1.0f, 1.0f,-1.0f},
+		{1.0f,-1.0f, 1.0f},
+		{-1.0f,-1.0f, 1.0f},
+		{-1.0f,-1.0f,-1.0f},
+		{-1.0f, 1.0f, 1.0f},
+		{-1.0f,-1.0f, 1.0f},
+		{1.0f,-1.0f, 1.0f},
+		{1.0f, 1.0f, 1.0f},
+		{1.0f,-1.0f,-1.0f},
+		{1.0f, 1.0f,-1.0f},
+		{1.0f,-1.0f,-1.0f},
+		{1.0f, 1.0f, 1.0f},
+		{1.0f,-1.0f, 1.0f},
+		{1.0f, 1.0f, 1.0f},
+		{1.0f, 1.0f,-1.0f},
+		{-1.0f, 1.0f,-1.0f},
+		{1.0f, 1.0f, 1.0f},
+		{-1.0f, 1.0f,-1.0f},
+		{-1.0f, 1.0f, 1.0f},
+		{1.0f, 1.0f, 1.0f},
+		{-1.0f, 1.0f, 1.0f},
+		{1.0f,-1.0f, 1.0f}
 	};
 
-	// Vertex Array Object for cube
-	glGenVertexArrays(1, &vao_cube);
-	glBindVertexArray(vao_cube);
+	vector<GLuint> indices = {};
 
-	// VBO for position
-	glGenBuffers(1, &vbo_position_cube);
-	glBindBuffer(GL_ARRAY_BUFFER, vbo_position_cube);	
-	glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVertices), cubeVertices, GL_STATIC_DRAW);
-	glVertexAttribPointer(AMC_ATTRIBUTE_POSITION, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), NULL);
-	glEnableVertexAttribArray(AMC_ATTRIBUTE_POSITION);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-	// VBO for color
-	glGenBuffers(1, &vbo_color_cube);
-	glBindBuffer(GL_ARRAY_BUFFER, vbo_color_cube);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVertices), cubeVertices, GL_STATIC_DRAW);
-	glVertexAttribPointer(AMC_ATTRIBUTE_COLOR, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (void*)(3 * sizeof(GLfloat)));
-	glEnableVertexAttribArray(AMC_ATTRIBUTE_COLOR);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-	glBindVertexArray(0);
+	Mesh cube1(cubePositions, indices);
+	vao_cube = cube1.prepare();
 
 	// enabling depth
 	glClearDepth(1.0f);
@@ -186,7 +139,6 @@ void init(void)
 	// return(0);
 }
 
-
 void resize(int width, int height)
 {
 	// code
@@ -196,9 +148,8 @@ void resize(int width, int height)
 	glViewport(0, 0, (GLsizei)width, (GLsizei)height);
 
 	// set perspective projection matrix
-	perspectiveProjectionMatrix = vmath::perspective(45.0f, (GLfloat)width / (GLfloat)height, 0.1f, 100.0f);	
+	perspectiveProjectionMatrix = vmath::perspective(45.0f, (GLfloat)width / (GLfloat)height, 0.1f, 100.0f);
 }
-
 
 void draw(void)
 {
@@ -212,10 +163,10 @@ void draw(void)
 	mat4 modelViewMatrix = vmath::mat4::identity();
 	mat4 modelViewProjectionMatrix = vmath::mat4::identity();
 	mat4 translationMatrix = vmath::mat4::identity();
-		
+
 	mat4 rotationMatrix = vmath::mat4::identity();
 
-	// cube	
+	// cube
 	translationMatrix = vmath::translate(0.0f, 0.0f, -6.0f);
 
 	mat4 scaleMatrix = vmath::mat4::identity();
@@ -231,7 +182,7 @@ void draw(void)
 	rotationMatrix3 = vmath::rotate(angle_cube, 0.0f, 0.0f, 1.0f);
 
 	rotationMatrix = rotationMatrix1 * rotationMatrix2 * rotationMatrix3;
-	
+
 	modelViewMatrix = translationMatrix * scaleMatrix * rotationMatrix;
 	modelViewProjectionMatrix = perspectiveProjectionMatrix * modelViewMatrix; // order of multiplication is important
 
@@ -239,16 +190,13 @@ void draw(void)
 	glUniformMatrix4fv(mvpMatrixUniform, 1, GL_FALSE, modelViewProjectionMatrix);
 
 	glBindVertexArray(vao_cube);
-	glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-	glDrawArrays(GL_TRIANGLE_FAN, 4, 4);
-	glDrawArrays(GL_TRIANGLE_FAN, 8, 4);
-	glDrawArrays(GL_TRIANGLE_FAN, 12, 4);
-	glDrawArrays(GL_TRIANGLE_FAN, 16, 4);
-	glDrawArrays(GL_TRIANGLE_FAN, 20, 4);
+
+	glDrawArrays(GL_TRIANGLES, 0, 36);
 
 	glBindVertexArray(0);
 
 	glUseProgram(0);
+
 
 	acewmSwapBuffers();
 }

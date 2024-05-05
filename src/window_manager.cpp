@@ -1,215 +1,215 @@
 #include "../include/window_manager.h"
 
 #ifdef _WIN32
-	HWND _ghwnd = NULL;
-	DWORD _dwStyle = 0;
-	WINDOWPLACEMENT _wpPrev = { sizeof(WINDOWPLACEMENT) };
+HWND _ghwnd = NULL;
+DWORD _dwStyle = 0;
+WINDOWPLACEMENT _wpPrev = {sizeof(WINDOWPLACEMENT)};
 
-	BOOL _gbFullscreen = FALSE;
-	BOOL _gbActive = FALSE;
+BOOL _gbFullscreen = FALSE;
+BOOL _gbActive = FALSE;
 
-	int _gWidth = 800;
-	int _gHeight = 600;
+int _gWidth = 800;
+int _gHeight = 600;
 
-	// OpenGL related global variables
-	HDC ghdc = NULL;
-	HGLRC ghrc = NULL;
+// OpenGL related global variables
+HDC ghdc = NULL;
+HGLRC ghrc = NULL;
 #else
-	Display *display = NULL;
-	Colormap colormap;
-	Window window;
-	XVisualInfo *visualInfo;
+Display *display = NULL;
+Colormap colormap;
+Window window;
+XVisualInfo *visualInfo;
 
-    XEvent event;
-    KeySym keySym;
-    char keys[26];
+XEvent event;
+KeySym keySym;
+char keys[26];
 
-	Bool _gbFullscreen = False;
-	Bool _gbActive = False;
+Bool _gbFullscreen = False;
+Bool _gbActive = False;
 
-	Bool bDone = False;
+Bool bDone = False;
 
-	int _gWidth = 800;
-	int _gHeight = 600;
+int _gWidth = 800;
+int _gHeight = 600;
 
-	// OpenGL global variable
-	glXCreateContextAttribsARBproc glXCreateContextAttribsARB = NULL;
-	GLXFBConfig glxFBConfig;
-	GLXContext glxContext = NULL;
+// OpenGL global variable
+glXCreateContextAttribsARBproc glXCreateContextAttribsARB = NULL;
+GLXFBConfig glxFBConfig;
+GLXContext glxContext = NULL;
 #endif
 
-
 // global callback declarations
-InitializeCallback   _initializeCallback  = NULL;
-KeyboardCallback     _keyboardCallback    = NULL;  
-MouseMoveCallback    _mouseMoveCallback   = NULL; 
-MouseClickCallback   _mouseClickCallback  = NULL;
-DisplayCallback      _displayCallback     = NULL;   
-UpdateCallback       _updateCallback      = NULL;    
-ReshapeCallback      _reshapeCallback     = NULL;   
+InitializeCallback _initializeCallback = NULL;
+KeyboardCallback _keyboardCallback = NULL;
+MouseMoveCallback _mouseMoveCallback = NULL;
+MouseClickCallback _mouseClickCallback = NULL;
+DisplayCallback _displayCallback = NULL;
+UpdateCallback _updateCallback = NULL;
+ReshapeCallback _reshapeCallback = NULL;
 UninitializeCallback _uninitializeCallback = NULL;
 
 #ifdef WIN32
 LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 {
-	// code
-	switch (iMsg)
-	{
-	case WM_SETFOCUS:
-		_gbActive = TRUE;
-		break;
-	case WM_KILLFOCUS:
-		_gbActive = FALSE;
-		break;
-	case WM_SIZE:
+    // code
+    switch (iMsg)
+    {
+    case WM_SETFOCUS:
+        _gbActive = TRUE;
+        break;
+    case WM_KILLFOCUS:
+        _gbActive = FALSE;
+        break;
+    case WM_SIZE:
         if (_reshapeCallback)
         {
-		    _reshapeCallback(LOWORD(lParam), HIWORD(lParam));
+            _reshapeCallback(LOWORD(lParam), HIWORD(lParam));
         }
-		break;
-	case WM_ERASEBKGND:
-		return(0);
-	case WM_KEYDOWN:
-        if(_keyboardCallback) 
-		{
-            _keyboardCallback(wParam);
-		}
         break;
-	case WM_CHAR:
-		switch (LOWORD(wParam))
-		{
-		case 'F':
-		case 'f':
-			if (_gbFullscreen == FALSE)
-			{
-				ToggleFullscreen();
-				_gbFullscreen = TRUE;
-			}
-			else
-			{
-				ToggleFullscreen();
-				_gbFullscreen = FALSE;
-			}
-			break;
-		case 27:
-			DestroyWindow(hwnd);
-			break;
-		}
-		break;
-	case WM_CLOSE:
-		DestroyWindow(hwnd);
-		break;
-	case WM_DESTROY:
-		PostQuitMessage(0);
-		break;
-	default:
-		break;
-	}
+    case WM_ERASEBKGND:
+        return (0);
+    case WM_KEYDOWN:
+        if (_keyboardCallback)
+        {
+            _keyboardCallback(wParam);
+        }
+        break;
+    case WM_CHAR:
+        switch (LOWORD(wParam))
+        {
+        case 'F':
+        case 'f':
+            if (_gbFullscreen == FALSE)
+            {
+                ToggleFullscreen();
+                _gbFullscreen = TRUE;
+            }
+            else
+            {
+                ToggleFullscreen();
+                _gbFullscreen = FALSE;
+            }
+            break;
+        case 27:
+            DestroyWindow(hwnd);
+            break;
+        }
+        break;
+    case WM_CLOSE:
+        DestroyWindow(hwnd);
+        break;
+    case WM_DESTROY:
+        PostQuitMessage(0);
+        break;
+    default:
+        break;
+    }
 
-	return(DefWindowProc(hwnd, iMsg, wParam, lParam));
+    return (DefWindowProc(hwnd, iMsg, wParam, lParam));
 }
- 
+
 void ToggleFullscreen(void)
 {
-	// local variable declarations
-	MONITORINFO mi = { sizeof(MONITORINFO) };
+    // local variable declarations
+    MONITORINFO mi = {sizeof(MONITORINFO)};
 
-	// code
-	if (_gbFullscreen == FALSE)
-	{
-		_dwStyle = GetWindowLong(_ghwnd, GWL_STYLE);
+    // code
+    if (_gbFullscreen == FALSE)
+    {
+        _dwStyle = GetWindowLong(_ghwnd, GWL_STYLE);
 
-		if (_dwStyle & WS_OVERLAPPEDWINDOW)
-		{
-			if (GetWindowPlacement(_ghwnd, &_wpPrev) && GetMonitorInfo(MonitorFromWindow(_ghwnd, MONITORINFOF_PRIMARY), &mi))
-			{
-				SetWindowLong(_ghwnd, GWL_STYLE, _dwStyle & ~WS_OVERLAPPEDWINDOW);
-				SetWindowPos(_ghwnd, HWND_TOP, mi.rcMonitor.left, mi.rcMonitor.top, mi.rcMonitor.right - mi.rcMonitor.left, mi.rcMonitor.bottom - mi.rcMonitor.top, SWP_NOZORDER | SWP_FRAMECHANGED);
-			}
-		}
+        if (_dwStyle & WS_OVERLAPPEDWINDOW)
+        {
+            if (GetWindowPlacement(_ghwnd, &_wpPrev) && GetMonitorInfo(MonitorFromWindow(_ghwnd, MONITORINFOF_PRIMARY), &mi))
+            {
+                SetWindowLong(_ghwnd, GWL_STYLE, _dwStyle & ~WS_OVERLAPPEDWINDOW);
+                SetWindowPos(_ghwnd, HWND_TOP, mi.rcMonitor.left, mi.rcMonitor.top, mi.rcMonitor.right - mi.rcMonitor.left, mi.rcMonitor.bottom - mi.rcMonitor.top, SWP_NOZORDER | SWP_FRAMECHANGED);
+            }
+        }
 
-		ShowCursor(FALSE);
-	}
-	else
-	{
-		SetWindowPlacement(_ghwnd, &_wpPrev);
-		SetWindowLong(_ghwnd, GWL_STYLE, _dwStyle | WS_OVERLAPPEDWINDOW);
-		SetWindowPos(_ghwnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOOWNERZORDER | SWP_NOZORDER | SWP_FRAMECHANGED);
-		ShowCursor(TRUE);
-	}
+        ShowCursor(FALSE);
+    }
+    else
+    {
+        SetWindowPlacement(_ghwnd, &_wpPrev);
+        SetWindowLong(_ghwnd, GWL_STYLE, _dwStyle | WS_OVERLAPPEDWINDOW);
+        SetWindowPos(_ghwnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOOWNERZORDER | SWP_NOZORDER | SWP_FRAMECHANGED);
+        ShowCursor(TRUE);
+    }
 }
 
 int initialize(void)
 {
-	// variable declarations
-	PIXELFORMATDESCRIPTOR pfd;
-	int iPixelFormatIndex = 0;
+    // variable declarations
+    PIXELFORMATDESCRIPTOR pfd;
+    int iPixelFormatIndex = 0;
 
-	// code
-	ZeroMemory(&pfd, sizeof(PIXELFORMATDESCRIPTOR));
+    // code
+    ZeroMemory(&pfd, sizeof(PIXELFORMATDESCRIPTOR));
 
-	// initialization of PI
-	pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
-	pfd.nVersion = 1;
-	pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
-	pfd.iPixelType = PFD_TYPE_RGBA;
-	pfd.cColorBits = 32;
-	pfd.cRedBits = 8;
-	pfd.cGreenBits = 8;
-	pfd.cBlueBits = 8;
-	pfd.cAlphaBits = 8;
-	pfd.cDepthBits = 32;
+    // initialization of PI
+    pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
+    pfd.nVersion = 1;
+    pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
+    pfd.iPixelType = PFD_TYPE_RGBA;
+    pfd.cColorBits = 32;
+    pfd.cRedBits = 8;
+    pfd.cGreenBits = 8;
+    pfd.cBlueBits = 8;
+    pfd.cAlphaBits = 8;
+    pfd.cDepthBits = 32;
 
-	// get the DC
-	ghdc = GetDC(_ghwnd);
-	if (ghdc == NULL)
-	{
-		// fprintf(gpFile, "GetDC() failed.\n");
-		return(-1);
-	}
+    // get the DC
+    ghdc = GetDC(_ghwnd);
+    if (ghdc == NULL)
+    {
+        // fprintf(gpFile, "GetDC() failed.\n");
+        return (-1);
+    }
 
-	// get pixel format
-	iPixelFormatIndex = ChoosePixelFormat(ghdc, &pfd);
+    // get pixel format
+    iPixelFormatIndex = ChoosePixelFormat(ghdc, &pfd);
 
-	if (iPixelFormatIndex == 0)
-	{
-		// fprintf(gpFile, "ChoosePixelFormat() failed.\n");
-		return(-2);
-	}
+    if (iPixelFormatIndex == 0)
+    {
+        // fprintf(gpFile, "ChoosePixelFormat() failed.\n");
+        return (-2);
+    }
 
-	// set obtained pixel format
-	if (SetPixelFormat(ghdc, iPixelFormatIndex, &pfd) == FALSE) {
-		// fprintf(gpFile, "SetPixelFormat() failed.\n");
-		return(-3);
-	}
+    // set obtained pixel format
+    if (SetPixelFormat(ghdc, iPixelFormatIndex, &pfd) == FALSE)
+    {
+        // fprintf(gpFile, "SetPixelFormat() failed.\n");
+        return (-3);
+    }
 
-	// create OpenGL context from Device Context
-	ghrc = wglCreateContext(ghdc);
-	if (ghrc == NULL)
-	{
-		// fprintf(gpFile, "wglCreateContext() failed.\n");
-		return(-4);
-	}
+    // create OpenGL context from Device Context
+    ghrc = wglCreateContext(ghdc);
+    if (ghrc == NULL)
+    {
+        // fprintf(gpFile, "wglCreateContext() failed.\n");
+        return (-4);
+    }
 
-	// make rendering context current
-	if (wglMakeCurrent(ghdc, ghrc) == FALSE)
-	{
-		// fprintf(gpFile, "wglMakeCurrent() failed.\n");
-		return(-5);
-	}
+    // make rendering context current
+    if (wglMakeCurrent(ghdc, ghrc) == FALSE)
+    {
+        // fprintf(gpFile, "wglMakeCurrent() failed.\n");
+        return (-5);
+    }
 
-    if(_initializeCallback)
+    if (_initializeCallback)
     {
         _initializeCallback();
     }
 
-	// warm up resize
-    if(_reshapeCallback) 
+    // warm up resize
+    if (_reshapeCallback)
     {
         _reshapeCallback(_gWidth, _gHeight);
-	}
+    }
 
-	return(0);
+    return (0);
 }
 
 void acewmEventLoop()
@@ -220,189 +220,184 @@ void acewmEventLoop()
 
     // code
     while (bDone == FALSE)
-	{
-		if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
-		{
-			if (msg.message == WM_QUIT)
-			{
-				bDone = TRUE;
-			}
-			else
-			{
-				TranslateMessage(&msg);
-				DispatchMessage(&msg);
-			}
-		}
-		else
-		{
-			if (_gbActive == TRUE) 
+    {
+        if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+        {
+            if (msg.message == WM_QUIT)
+            {
+                bDone = TRUE;
+            }
+            else
+            {
+                TranslateMessage(&msg);
+                DispatchMessage(&msg);
+            }
+        }
+        else
+        {
+            if (_gbActive == TRUE)
             {
                 if (_updateCallback)
                     _updateCallback();
             }
 
             if (_displayCallback)
-			{
-			    _displayCallback();
-			}
-		}
-    }    
+            {
+                _displayCallback();
+            }
+        }
+    }
 }
-
 
 void _uninitialize(void)
 {
     if (_uninitializeCallback)
         _uninitializeCallback();
 
-    	// fullscreen check
-	if (_gbFullscreen == TRUE)
-	{
-		SetWindowLong(_ghwnd, GWL_STYLE, _dwStyle | WS_OVERLAPPEDWINDOW);
-		SetWindowPlacement(_ghwnd, &_wpPrev);
-		SetWindowPos(_ghwnd,
-			HWND_TOP,
-			0,
-			0,
-			0,
-			0,
-			SWP_NOZORDER | SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOOWNERZORDER);
+    // fullscreen check
+    if (_gbFullscreen == TRUE)
+    {
+        SetWindowLong(_ghwnd, GWL_STYLE, _dwStyle | WS_OVERLAPPEDWINDOW);
+        SetWindowPlacement(_ghwnd, &_wpPrev);
+        SetWindowPos(_ghwnd,
+                     HWND_TOP,
+                     0,
+                     0,
+                     0,
+                     0,
+                     SWP_NOZORDER | SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOOWNERZORDER);
 
-		ShowCursor(TRUE);
-	}
+        ShowCursor(TRUE);
+    }
 
-	// break the current context
-	if (wglGetCurrentContext() == ghrc)
-	{
-		wglMakeCurrent(NULL, NULL);
-	}
+    // break the current context
+    if (wglGetCurrentContext() == ghrc)
+    {
+        wglMakeCurrent(NULL, NULL);
+    }
 
-	if (ghrc)
-	{
-		wglDeleteContext(ghrc);
-	}
+    if (ghrc)
+    {
+        wglDeleteContext(ghrc);
+    }
 
-	if (ghdc)
-	{
-		ReleaseDC(_ghwnd, ghdc);
-		ghdc = NULL;
-	}
-
+    if (ghdc)
+    {
+        ReleaseDC(_ghwnd, ghdc);
+        ghdc = NULL;
+    }
 }
 
 void acewmCreateWindow(const char *title, int x, int y, int width, int height)
 {
-    // variables 
-	int iRet = 0;
-	WNDCLASSEX wndclass;
-	HWND hwnd;
-	MSG msg;
+    // variables
+    int iRet = 0;
+    WNDCLASSEX wndclass;
+    HWND hwnd;
+    MSG msg;
 
     _gWidth = width;
     _gHeight = height;
 
-    HINSTANCE hInstance = (HINSTANCE) GetModuleHandle(NULL);
+    HINSTANCE hInstance = (HINSTANCE)GetModuleHandle(NULL);
 
     size_t size = strlen(title) + 1;
-	TCHAR *szClassName = new TCHAR[size];
-    szClassName = (TCHAR*)title;
+    TCHAR *szClassName = new TCHAR[size];
+    szClassName = (TCHAR *)title;
 
-	// code
-	// TO DO : create file for logging
+    // code
+    // TO DO : create file for logging
 
-	// WNDCLASSEX initialization
-	wndclass.cbSize = sizeof(WNDCLASSEX);
-	wndclass.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
-	wndclass.cbClsExtra = 0;
-	wndclass.cbWndExtra = 0;
-	wndclass.lpfnWndProc = WndProc;
-	wndclass.hInstance = hInstance;
-	wndclass.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
-	wndclass.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(MYICON));
-	wndclass.hCursor = LoadCursor(NULL, IDC_ARROW);
-	wndclass.lpszClassName = szClassName;
-	wndclass.lpszMenuName = NULL;
-	wndclass.hIconSm = LoadIcon(hInstance, MAKEINTRESOURCE(MYICON));
+    // WNDCLASSEX initialization
+    wndclass.cbSize = sizeof(WNDCLASSEX);
+    wndclass.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
+    wndclass.cbClsExtra = 0;
+    wndclass.cbWndExtra = 0;
+    wndclass.lpfnWndProc = WndProc;
+    wndclass.hInstance = hInstance;
+    wndclass.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
+    wndclass.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(MYICON));
+    wndclass.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wndclass.lpszClassName = szClassName;
+    wndclass.lpszMenuName = NULL;
+    wndclass.hIconSm = LoadIcon(hInstance, MAKEINTRESOURCE(MYICON));
 
-	// register WNDCLASSEX
-	RegisterClassEx(&wndclass);
+    // register WNDCLASSEX
+    RegisterClassEx(&wndclass);
 
-	// create window
-	hwnd = CreateWindowEx(WS_EX_APPWINDOW,
-		szClassName,
-		szClassName,
-		WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_VISIBLE,
-		(GetSystemMetrics(SM_CXSCREEN) - _gWidth) / 2,
-		(GetSystemMetrics(SM_CYSCREEN) - _gHeight) / 2,
-		_gWidth,
-		_gHeight,
-		NULL,
-		NULL,
-		hInstance,
-		NULL
-	);
+    // create window
+    hwnd = CreateWindowEx(WS_EX_APPWINDOW,
+                          szClassName,
+                          szClassName,
+                          WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_VISIBLE,
+                          (GetSystemMetrics(SM_CXSCREEN) - _gWidth) / 2,
+                          (GetSystemMetrics(SM_CYSCREEN) - _gHeight) / 2,
+                          _gWidth,
+                          _gHeight,
+                          NULL,
+                          NULL,
+                          hInstance,
+                          NULL);
 
-	_ghwnd = hwnd;
+    _ghwnd = hwnd;
 
-	iRet = initialize();
-	if (iRet == -1)
-	{
-		// fprintf(_gpFile, "ChoosePixelFormat failed...\n");
-		DestroyWindow(hwnd);
-	}
-	else if (iRet == -2)
-	{
-		// fprintf(_gpFile, "SetPixelFormat failed...\n");
-		DestroyWindow(hwnd);
-	}
-	else if (iRet == -3)
-	{
-		// fprintf(_gpFile, "wglCreateContext failed...\n");
-		DestroyWindow(hwnd);
-	}
-	else if (iRet == -4)
-	{
-		// fprintf(_gpFile, "wglMakeCurrent failed...\n");
-		DestroyWindow(hwnd);
-	}
-	else
-	{
-		// fprintf(_gpFile, "initialize() successful...\n");
-	}
+    iRet = initialize();
+    if (iRet == -1)
+    {
+        // fprintf(_gpFile, "ChoosePixelFormat failed...\n");
+        DestroyWindow(hwnd);
+    }
+    else if (iRet == -2)
+    {
+        // fprintf(_gpFile, "SetPixelFormat failed...\n");
+        DestroyWindow(hwnd);
+    }
+    else if (iRet == -3)
+    {
+        // fprintf(_gpFile, "wglCreateContext failed...\n");
+        DestroyWindow(hwnd);
+    }
+    else if (iRet == -4)
+    {
+        // fprintf(_gpFile, "wglMakeCurrent failed...\n");
+        DestroyWindow(hwnd);
+    }
+    else
+    {
+        // fprintf(_gpFile, "initialize() successful...\n");
+    }
 
-	// show the window
-	ShowWindow(hwnd, SW_NORMAL);
+    // show the window
+    ShowWindow(hwnd, SW_NORMAL);
 
-	SetForegroundWindow(hwnd);
-	SetFocus(hwnd);
+    SetForegroundWindow(hwnd);
+    SetFocus(hwnd);
 }
 
 void acewmSwapBuffers(void)
 {
-	SwapBuffers(ghdc);
+    SwapBuffers(ghdc);
 }
 
 #else
 
 int initialize()
 {
-	// local variable declarations
+    // local variable declarations
     int attribs_new[] = {
         GLX_CONTEXT_MAJOR_VERSION_ARB, 4,
         GLX_CONTEXT_MINOR_VERSION_ARB, 6,
         GLX_CONTEXT_PROFILE_MASK_ARB, GLX_CONTEXT_CORE_PROFILE_BIT_ARB,
-        None
-    };
+        None};
 
     int attribs_old[] = {
         GLX_CONTEXT_MAJOR_VERSION_ARB, 1,
         GLX_CONTEXT_MINOR_VERSION_ARB, 0,
-        None
-    };
+        None};
 
     // code
     // get the address of function in function pointer
-    glXCreateContextAttribsARB = (glXCreateContextAttribsARBproc)glXGetProcAddress((GLubyte*)"glXCreateContextAttribsARB");
+    glXCreateContextAttribsARB = (glXCreateContextAttribsARBproc)glXGetProcAddress((GLubyte *)"glXCreateContextAttribsARB");
 
     if (glXCreateContextAttribsARB == NULL)
     {
@@ -450,24 +445,24 @@ int initialize()
         return -2;
     }
 
-    if(_initializeCallback)
+    if (_initializeCallback)
     {
         _initializeCallback();
     }
 
-	// warm up resize
-    if(_reshapeCallback) 
+    // warm up resize
+    if (_reshapeCallback)
     {
         _reshapeCallback(_gWidth, _gHeight);
-	}
+    }
 
-	return 0;     
+    return 0;
 }
 
 void acewmCreateWindow(const char *title, int x, int y, int width, int height)
 {
 
-   	// local variable declarations
+    // local variable declarations
     int defaultScreen;
     XSetWindowAttributes windowAtrributes;
     int styleMask;
@@ -489,9 +484,8 @@ void acewmCreateWindow(const char *title, int x, int y, int width, int height)
         GLX_ALPHA_SIZE, 8,
         GLX_STENCIL_SIZE, 8,
         GLX_DEPTH_SIZE, 24,
-        None
-    };
-    
+        None};
+
     Bool bDone = False;
     int result = 0;
 
@@ -505,7 +499,7 @@ void acewmCreateWindow(const char *title, int x, int y, int width, int height)
     int bestNumOfSamples = -1;
     int worstFrameBufferConfig = -1;
     int worstNumOfSamples = 999;
-    
+
     int sampleBuffers = 0;
     int samples = 0;
     int i = 0;
@@ -564,22 +558,21 @@ void acewmCreateWindow(const char *title, int x, int y, int width, int height)
 
     // assign to global glxConfig
     glxFBConfig = bestGLXconfig;
-    
+
     XFree(glxFBConfigs);
 
     // now get best visual bestFBConfig
     visualInfo = glXGetVisualFromFBConfig(display, glxFBConfig);
 
     // set window attriubtes / properties
-    memset((void*)&windowAtrributes, 0, sizeof(XWindowAttributes));
+    memset((void *)&windowAtrributes, 0, sizeof(XWindowAttributes));
     windowAtrributes.border_pixel = 0;
     windowAtrributes.background_pixel = XBlackPixel(display, visualInfo->screen);
     windowAtrributes.background_pixmap = 0;
     windowAtrributes.colormap = XCreateColormap(display,
-                                    XRootWindow(display, visualInfo->screen),
-                                    visualInfo->visual,
-                                    AllocNone
-                                );
+                                                XRootWindow(display, visualInfo->screen),
+                                                visualInfo->visual,
+                                                AllocNone);
 
     // assign this colormap to global colormap
     colormap = windowAtrributes.colormap;
@@ -589,28 +582,26 @@ void acewmCreateWindow(const char *title, int x, int y, int width, int height)
 
     // now finally create a window
     window = XCreateWindow(display,
-                            XRootWindow(display, visualInfo->screen),
-                            0,
-                            0,
-                            _gWidth,
-                            _gHeight,
-                            0,
-                            visualInfo->depth,
-                            InputOutput,
-                            visualInfo->visual,
-                            styleMask,
-                            &windowAtrributes
-                        );
+                           XRootWindow(display, visualInfo->screen),
+                           0,
+                           0,
+                           _gWidth,
+                           _gHeight,
+                           0,
+                           visualInfo->depth,
+                           InputOutput,
+                           visualInfo->visual,
+                           styleMask,
+                           &windowAtrributes);
 
     if (!window)
     {
-        exit(1);        
+        exit(1);
     }
 
     // specify to which events this window should respond
     XSelectInput(display, window,
-                ExposureMask | VisibilityChangeMask | StructureNotifyMask | KeyPressMask | ButtonPressMask | PointerMotionMask | FocusChangeMask
-            );
+                 ExposureMask | VisibilityChangeMask | StructureNotifyMask | KeyPressMask | ButtonPressMask | PointerMotionMask | FocusChangeMask);
 
     // specify window manager delete atom
     windowMangerDelete = XInternAtom(display, "WM_DELETE_WINDOW", True);
@@ -628,24 +619,24 @@ void acewmCreateWindow(const char *title, int x, int y, int width, int height)
     screenWidth = XWidthOfScreen(XScreenOfDisplay(display, visualInfo->screen));
     screenHeight = XHeightOfScreen(XScreenOfDisplay(display, visualInfo->screen));
 
-    XMoveWindow(display, window, (screenWidth - width)/2 , (screenHeight - height)/2);
+    XMoveWindow(display, window, (screenWidth - width) / 2, (screenHeight - height) / 2);
 
     // OpenGL initialization
-	result = initialize();
+    result = initialize();
 
-	if (result != 0)
-	{
+    if (result != 0)
+    {
         exit(1);
-	}
+    }
 }
 
 void uninitialize()
 {
-	// local variable declarations
+    // local variable declarations
     GLXContext currentGLXContext = NULL;
 
-	if (_uninitializeCallback)
-	_uninitializeCallback();
+    if (_uninitializeCallback)
+        _uninitializeCallback();
 
     // uncurrent the context
     currentGLXContext = glXGetCurrentContext();
@@ -688,8 +679,8 @@ void ToggleFullscreen(void)
     windowManagerStateNormal = XInternAtom(display, "_NET_WM_STATE", False);
     windowManagerStateFullscreen = XInternAtom(display, "_NET_WM_STATE_FULLSCREEN", False);
 
-    // memset the event structure and fill it with above two atoms 
-    memset((void*)&event, 0, sizeof(XEvent));
+    // memset the event structure and fill it with above two atoms
+    memset((void *)&event, 0, sizeof(XEvent));
 
     event.type = ClientMessage;
     event.xclient.window = window;
@@ -704,12 +695,12 @@ void ToggleFullscreen(void)
 
 void acewmEventLoop()
 {
-	// game loop
+    // game loop
     while (bDone == False)
     {
         while (XPending(display))
         {
-            memset((void*)&event, 0, sizeof(XEvent));
+            memset((void *)&event, 0, sizeof(XEvent));
             XNextEvent(display, &event);
 
             switch (event.type)
@@ -728,7 +719,7 @@ void acewmEventLoop()
             case ConfigureNotify:
                 _gWidth = event.xconfigure.width;
                 _gHeight = event.xconfigure.height;
-        		_reshapeCallback(_gWidth, _gHeight);
+                _reshapeCallback(_gWidth, _gHeight);
                 break;
 
             case KeyPress:
@@ -739,7 +730,7 @@ void acewmEventLoop()
                 case XK_Escape:
                     bDone = True;
                     break;
-                
+
                 default:
                     break;
                 }
@@ -761,13 +752,13 @@ void acewmEventLoop()
                         _gbFullscreen = False;
                     }
                     break;
-                
+
                 default:
                     break;
                 }
 
                 break; // keypress
-            
+
             case ButtonPress:
                 switch (event.xbutton.button)
                 {
@@ -776,7 +767,7 @@ void acewmEventLoop()
                 case 2: // MIDDLE MOUSE BUTTON
                     break;
                 case 3: // RIGHT MOUSE BUTTON
-                    break;                            
+                    break;
                 default:
                     break;
                 }
@@ -794,14 +785,14 @@ void acewmEventLoop()
         if (_gbActive)
         {
             if (_displayCallback)
-			{
-			    _displayCallback();
-			}
+            {
+                _displayCallback();
+            }
 
             if (_updateCallback)
-			{
-			    _updateCallback();
-			}
+            {
+                _updateCallback();
+            }
         }
     }
 
@@ -810,7 +801,7 @@ void acewmEventLoop()
 
 void acewmSwapBuffers(void)
 {
-	glXSwapBuffers(display, window);
+    glXSwapBuffers(display, window);
 }
 
 #endif
@@ -824,7 +815,6 @@ void acewmUninitiiizeCallback(UninitializeCallback callback)
 {
     _uninitializeCallback = callback;
 }
-
 
 // input callbacks
 void acewmKeyboardCallback(KeyboardCallback callback)
@@ -858,7 +848,6 @@ void acewmReshapeCallback(ReshapeCallback callback)
     _reshapeCallback = callback;
 }
 
-
 void acewmFullScreen()
 {
     if (!_gbFullscreen)
@@ -873,5 +862,5 @@ void acewmExitFullScreen()
 
 void acewmDestroyWindow(void)
 {
-    // 
+    //
 }
