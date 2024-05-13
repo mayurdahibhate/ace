@@ -5,19 +5,19 @@ GLuint shaderProgramObject = 0;
 enum
 {
 	AMC_ATTRIBUTE_POSITION,
-	AMC_ATTRIBUTE_COLOR
+	AMC_ATTRIBUTE_TEXCOORD
 };
 
 Mesh cube;
 
 GLuint vao_cube = 0;
 
-GLuint vbo_position_cube = 0;
-GLuint vbo_color_cube = 0;
-
 GLuint mvpMatrixUniform = 0;
+GLuint textureSamplerUniform = 0;
 
 mat4 perspectiveProjectionMatrix;
+
+GLuint texture = 0;
 
 GLfloat angle_cube = 0.0f;
 
@@ -67,8 +67,8 @@ void init(void)
 	// shader program
 	ShaderInfo shaders[] =
 		{
-			{GL_VERTEX_SHADER, "./shaders/basic.vert"},
-			{GL_FRAGMENT_SHADER, "./shaders/basic.frag"},
+			{GL_VERTEX_SHADER, "./shaders/texture.vert"},
+			{GL_FRAGMENT_SHADER, "./shaders/texture.frag"},
 			{GL_NONE, NULL}};
 
 	shaderProgramObject = LoadShaders(shaders);
@@ -76,59 +76,101 @@ void init(void)
 
 	// get shader uniform location
 	mvpMatrixUniform = glGetUniformLocation(shaderProgramObject, "uMVPMatrix");
-
-
+	textureSamplerUniform = glGetUniformLocation(shaderProgramObject, "uTextureSampler");
 
 	vector<vec3> cubePositions;
+	vector<vec2> cubeTexcoords;
 
-	cubePositions = vector<vec3> {
-		{-1.0f,-1.0f,-1.0f},
-		{-1.0f,-1.0f, 1.0f},
-		{-1.0f, 1.0f, 1.0f},
-		{1.0f, 1.0f,-1.0f},
-		{-1.0f,-1.0f,-1.0f},
-		{-1.0f, 1.0f,-1.0f},
-		{1.0f,-1.0f, 1.0f},
-		{-1.0f,-1.0f,-1.0f},
-		{1.0f,-1.0f,-1.0f},
-		{1.0f, 1.0f,-1.0f},
-		{1.0f,-1.0f,-1.0f},
-		{-1.0f,-1.0f,-1.0f},
-		{-1.0f,-1.0f,-1.0f},
-		{-1.0f, 1.0f, 1.0f},
-		{-1.0f, 1.0f,-1.0f},
-		{1.0f,-1.0f, 1.0f},
-		{-1.0f,-1.0f, 1.0f},
-		{-1.0f,-1.0f,-1.0f},
-		{-1.0f, 1.0f, 1.0f},
-		{-1.0f,-1.0f, 1.0f},
-		{1.0f,-1.0f, 1.0f},
-		{1.0f, 1.0f, 1.0f},
-		{1.0f,-1.0f,-1.0f},
-		{1.0f, 1.0f,-1.0f},
-		{1.0f,-1.0f,-1.0f},
-		{1.0f, 1.0f, 1.0f},
-		{1.0f,-1.0f, 1.0f},
-		{1.0f, 1.0f, 1.0f},
-		{1.0f, 1.0f,-1.0f},
-		{-1.0f, 1.0f,-1.0f},
-		{1.0f, 1.0f, 1.0f},
-		{-1.0f, 1.0f,-1.0f},
-		{-1.0f, 1.0f, 1.0f},
-		{1.0f, 1.0f, 1.0f},
-		{-1.0f, 1.0f, 1.0f},
-		{1.0f,-1.0f, 1.0f}
+	cubePositions = {
+		// front
+		{1.0f,  1.0f,  1.0f}, // top-right of front
+		{-1.0f,  1.0f,  1.0f}, // top-left of front
+		{-1.0f, -1.0f,  1.0f}, // bottom-left of front
+		{1.0f, -1.0f,  1.0f}, // bottom-right of front
+
+		// right
+		{1.0f,  1.0f, -1.0f}, // top-right of right
+		{1.0f,  1.0f,  1.0f}, // top-left of right
+		{1.0f, -1.0f,  1.0f}, // bottom-left of right
+		{1.0f, -1.0f, -1.0f}, // bottom-right of right
+
+		// back
+		{1.0f,  1.0f, -1.0f}, // top-right of back
+		{-1.0f,  1.0f, -1.0f}, // top-left of back
+		{-1.0f, -1.0f, -1.0f}, // bottom-left of back
+		{1.0f, -1.0f, -1.0f}, // bottom-right of back
+
+		// left
+		{-1.0f,  1.0f,  1.0f}, // top-right of left
+		{-1.0f,  1.0f, -1.0f}, // top-left of left
+		{-1.0f, -1.0f, -1.0f}, // bottom-left of left
+		{-1.0f, -1.0f,  1.0f}, // bottom-right of left
+
+		// top
+		{1.0f,  1.0f, -1.0f}, // top-right of top
+		{-1.0f,  1.0f, -1.0f}, // top-left of top
+		{-1.0f,  1.0f,  1.0f}, // bottom-left of top
+		{1.0f,  1.0f,  1.0f}, // bottom-right of top
+
+		// bottom
+		{1.0f, -1.0f,  1.0f}, // top-right of bottom
+		{-1.0f, -1.0f,  1.0f}, // top-left of bottom
+		{-1.0f, -1.0f, -1.0f}, // bottom-left of bottom
+		{1.0f, -1.0f, -1.0f}, // bottom-right of bottom
+	};
+
+	cubeTexcoords = {
+		// front
+		{1.0f, 1.0f}, // top-right of front
+		{0.0f, 1.0f}, // top-left of front
+		{0.0f, 0.0f}, // bottom-left of front
+		{1.0f, 0.0f}, // bottom-right of front
+
+		// right
+		{1.0f, 1.0f}, // top-right of right
+		{0.0f, 1.0f}, // top-left of right
+		{0.0f, 0.0f}, // bottom-left of right
+		{1.0f, 0.0f}, // bottom-right of right
+
+		// back
+		{1.0f, 1.0f}, // top-right of back
+		{0.0f, 1.0f}, // top-left of back
+		{0.0f, 0.0f}, // bottom-left of back
+		{1.0f, 0.0f}, // bottom-right of back
+
+		// left
+		{1.0f, 1.0f}, // top-right of left
+		{0.0f, 1.0f}, // top-left of left
+		{0.0f, 0.0f}, // bottom-left of left
+		{1.0f, 0.0f}, // bottom-right of left
+
+		// top
+		{1.0f, 1.0f}, // top-right of top
+		{0.0f, 1.0f}, // top-left of top
+		{0.0f, 0.0f}, // bottom-left of top
+		{1.0f, 0.0f}, // bottom-right of top
+
+		// bottom
+		{1.0f, 1.0f}, // top-right of bottom
+		{0.0f, 1.0f}, // top-left of bottom
+		{0.0f, 0.0f}, // bottom-left of bottom
+		{1.0f, 0.0f} // bottom-right of bottom
 	};
 
 	vector<GLuint> indices = {};
 
-	Mesh cube1(cubePositions, indices);
+	Mesh cube1(cubePositions, cubeTexcoords);
 	vao_cube = cube1.prepare();
+
+    loadTextureFromFile("./res/ace.jpg", &texture);
 
 	// enabling depth
 	glClearDepth(1.0f);
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LEQUAL);
+
+	// tell OpenGL to enable textures
+	glEnable(GL_TEXTURE_2D);
 
 	// set the clearColor() of window to blue
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -189,14 +231,23 @@ void draw(void)
 	// push above mvp vertex shader's mvp uniform
 	glUniformMatrix4fv(mvpMatrixUniform, 1, GL_FALSE, modelViewProjectionMatrix);
 
+	// for texture
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glUniform1i(textureSamplerUniform, 0);
+
 	glBindVertexArray(vao_cube);
 
-	glDrawArrays(GL_TRIANGLES, 0, 36);
+	glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+	glDrawArrays(GL_TRIANGLE_FAN, 4, 4);
+	glDrawArrays(GL_TRIANGLE_FAN, 8, 4);
+	glDrawArrays(GL_TRIANGLE_FAN, 12, 4);
+	glDrawArrays(GL_TRIANGLE_FAN, 16, 4);
+	glDrawArrays(GL_TRIANGLE_FAN, 20, 4);
 
 	glBindVertexArray(0);
 
 	glUseProgram(0);
-
 
 	acewmSwapBuffers();
 }
@@ -216,19 +267,6 @@ void uninit(void)
 {
 	// code
 	DeleteShaderProg(shaderProgramObject);
-
-	// cube
-	if (vbo_color_cube)
-	{
-		glDeleteBuffers(1, &vbo_color_cube);
-		vbo_color_cube = 0;
-	}
-
-	if (vbo_position_cube)
-	{
-		glDeleteBuffers(1, &vbo_position_cube);
-		vbo_position_cube = 0;
-	}
 
 	// delete VAO
 	if (vao_cube)

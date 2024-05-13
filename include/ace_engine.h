@@ -11,6 +11,7 @@ using namespace vmath;
 #include "window_manager.h"
 #include "LoadShaders.h"
 #include "mesh.h"
+#include "texture.h"
 // #include "include/printGLinfo.h"
 
 #endif

@@ -19,7 +19,6 @@ class Mesh {
         GLuint m_VAO = 0;
         GLuint m_VBO = 0;
         GLuint m_EBO = 0;
-        GLenum topology = GL_TRIANGLES;
 
         // support multiple ways of initializing a mesh
         Mesh();
@@ -33,13 +32,13 @@ class Mesh {
         void draw();
 
     private:
-        vector<vec3> positions;
-        vector<vec2> uvs;
-        vector<vec3> normals;
-        vector<vec3> tangents;
-        vector<vec3> bitangents;
+        vector<vec3> positions = {};
+        vector<vec2> uvs = {};
+        vector<vec3> normals = {};
+        vector<vec3> tangents = {};
+        vector<vec3> bitangents = {};
 
-        vector<GLuint> indices;
+        vector<GLuint> indices = {};
 };
 
 #endif
