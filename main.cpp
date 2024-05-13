@@ -1,5 +1,7 @@
 #include "ace_engine.h"
 
+#include <iostream>
+
 GLuint shaderProgramObject = 0;
 
 enum
@@ -11,6 +13,9 @@ enum
 Mesh cube;
 
 GLuint vao_cube = 0;
+GLuint vao_sphere = 0;
+
+Sphere mSphere(30, 20);
 
 GLuint mvpMatrixUniform = 0;
 GLuint textureSamplerUniform = 0;
@@ -159,10 +164,13 @@ void init(void)
 
 	vector<GLuint> indices = {};
 
-	Mesh cube1(cubePositions, cubeTexcoords);
-	vao_cube = cube1.prepare();
+	// Mesh cube1(cubePositions, cubeTexcoords);
+	// vao_cube = cube1.prepare();
 
-    loadTextureFromFile("./res/ace.jpg", &texture);
+	vao_sphere = mSphere.prepare();
+	std:: cout << mSphere.positions.size() << " " << mSphere.uvs.size() << " " << mSphere.indices.size() << "\n";
+
+    loadTextureFromFile("./res/2k_sun.jpg", &texture);
 
 	// enabling depth
 	glClearDepth(1.0f);
@@ -173,7 +181,7 @@ void init(void)
 	glEnable(GL_TEXTURE_2D);
 
 	// set the clearColor() of window to blue
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClearColor(0.75, 0.85, 0.8, 1.0);
 
 	// initialize perspective projection matrix
 	perspectiveProjectionMatrix = vmath::mat4::identity();
@@ -215,13 +223,13 @@ void draw(void)
 	scaleMatrix = vmath::scale(0.75f, 0.75f, 0.75f);
 
 	mat4 rotationMatrix1 = vmath::mat4::identity();
-	rotationMatrix1 = vmath::rotate(angle_cube, 1.0f, 0.0f, 0.0f);
+	// rotationMatrix1 = vmath::rotate(angle_cube, 1.0f, 0.0f, 0.0f);
 
 	mat4 rotationMatrix2 = vmath::mat4::identity();
 	rotationMatrix2 = vmath::rotate(angle_cube, 0.0f, 1.0f, 0.0f);
 
 	mat4 rotationMatrix3 = vmath::mat4::identity();
-	rotationMatrix3 = vmath::rotate(angle_cube, 0.0f, 0.0f, 1.0f);
+	// rotationMatrix3 = vmath::rotate(angle_cube, 0.0f, 0.0f, 1.0f);
 
 	rotationMatrix = rotationMatrix1 * rotationMatrix2 * rotationMatrix3;
 
@@ -236,16 +244,22 @@ void draw(void)
 	glBindTexture(GL_TEXTURE_2D, texture);
 	glUniform1i(textureSamplerUniform, 0);
 
-	glBindVertexArray(vao_cube);
+	// glBindVertexArray(vao_cube);
 
-	glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-	glDrawArrays(GL_TRIANGLE_FAN, 4, 4);
-	glDrawArrays(GL_TRIANGLE_FAN, 8, 4);
-	glDrawArrays(GL_TRIANGLE_FAN, 12, 4);
-	glDrawArrays(GL_TRIANGLE_FAN, 16, 4);
-	glDrawArrays(GL_TRIANGLE_FAN, 20, 4);
+	// glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+	// glDrawArrays(GL_TRIANGLE_FAN, 4, 4);
+	// glDrawArrays(GL_TRIANGLE_FAN, 8, 4);
+	// glDrawArrays(GL_TRIANGLE_FAN, 12, 4);
+	// glDrawArrays(GL_TRIANGLE_FAN, 16, 4);
+	// glDrawArrays(GL_TRIANGLE_FAN, 20, 4);
 
-	glBindVertexArray(0);
+	// glBindVertexArray(0);
+
+	glBindVertexArray(vao_sphere);
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mSphere.m_EBO);
+
+	glDrawElements(GL_TRIANGLES, mSphere.indices.size(), GL_UNSIGNED_INT, (void*)0);
 
 	glUseProgram(0);
 

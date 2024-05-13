@@ -13,7 +13,7 @@ void loadTextureFromFile(const char* path, GLuint *texture)
     int width = 0, height = 0;
     int nrChannels = 0;
 
-    stbi_set_flip_vertically_on_load(true);
+    // stbi_set_flip_vertically_on_load(true);
 
     data = stbi_load(path, &width, &height, &nrChannels, 0);
 

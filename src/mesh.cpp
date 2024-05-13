@@ -21,9 +21,9 @@ Mesh::Mesh(vector<vec3> positions, vector<unsigned int> indices)
 
 Mesh::Mesh(vector<vec3> positions, vector<vec2> uvs, vector<unsigned int> indices)
 {
-    positions = positions;
-    uvs = uvs;
-    indices = indices;
+    this->positions = positions;
+    this->uvs = uvs;
+    this->indices = indices;
 }
 
 Mesh::Mesh(vector<vec3> positions, vector<vec2> uvs, vector<vec3> normals, vector<unsigned int> indices)
@@ -140,7 +140,6 @@ GLuint Mesh::prepare()
     glBindVertexArray(0);
 
     return m_VAO;
-
 }
 
 void Mesh::draw()

@@ -31,7 +31,6 @@ class Mesh {
         GLuint prepare();
         void draw();
 
-    private:
         vector<vec3> positions = {};
         vector<vec2> uvs = {};
         vector<vec3> normals = {};
